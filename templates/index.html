@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang='en'>
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>Google Pay Chatbot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel='stylesheet'>
+</head>
+<body>
+    <div class='chat-container'>
+        <div class="header">
+            <h1 class='heading'>
+                <span class="g-blue">G</span><span class="g-red">o</span><span class="g-yellow">o</span><span class="g-blue">g</span><span class="g-red">l</span><span class="g-green">e</span> Pay Chatbot
+            </h1>
+        </div>
+        <div id="chat-history" class="chat-history">
+             <div class="chat-message bot">
+                 <div class="message-avatar bot-avatar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.75L13.8341 10.1659L21.25 12L13.8341 13.8341L12 21.25L10.1659 13.8341L2.75 12L10.1659 10.1659L12 2.75Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+                 </div>
+                 <div class="message-content">Hello! How can I help you today?</div>
+            </div>
+        </div>
+        
+        <div class='footer'>
+            <form id="chat-form" class='chat-form'>
+                 <div class='input-group'>
+                    <input name='query' class='form-control' placeholder='Ask a question...' autofocus required autocomplete="off">
+                    <button class='btn-submit' type='submit' title="Submit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </form>
+            <div class="footer-text">
+                Powered by Gemini API &middot; Retrieval-Augmented Generation Demo
+            </div>
+        </div>
+    </div>
+
+    <button id="contact-us-btn" class="contact-us-btn">
+        Not happy with the response? <strong>Contact us</strong>
+    </button>
+
+    <div id="contact-modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <div id="modal-form-view">
+                <h3>Contact Human Support</h3>
+                <p>Please fill out the form below and an agent will get back to you.</p>
+                <form id="contact-form">
+                    <input type="text" name="name" placeholder="Your Name" required>
+                    <input type="email" name="email" placeholder="Your Email" required>
+                    <textarea name="question" rows="4" placeholder="Your Question" required></textarea>
+                    <button type="submit" class="modal-submit-btn">Submit</button>
+                </form>
+            </div>
+            <div id="modal-success-view" style="display: none;">
+                <h3>Submitted!</h3>
+                <p>Your request has been received. Our team will get in touch with you shortly.</p>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Existing Chat Form Logic ---
+        const chatForm = document.getElementById('chat-form');
+        const chatHistory = document.getElementById('chat-history');
+        const queryInput = chatForm.querySelector('input[name="query"]');
+        
+        chatForm.addEventListener('submit', async function(event) {
+            // (This whole event listener is the same as before)
+            event.preventDefault(); 
+            const query = queryInput.value.trim();
+            if (!query) return;
+            appendMessage('user', query);
+            queryInput.value = ''; 
+            const loadingEl = appendMessage('bot', 'loading');
+            try {
+                const response = await fetch('/api/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                updateBotMessage(loadingEl, data.answer);
+            } catch (error) {
+                console.error("Fetch error:", error);
+                updateBotMessage(loadingEl, "Sorry, something went wrong. Please try again.");
+            }
+        });
+
+        // --- (Existing appendMessage, updateBotMessage, and scrollToBottom functions are the same) ---
+        function appendMessage(role, content) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = `chat-message ${role}`;
+            let messageHTML = '';
+            if (role === 'user') { /* ... same as before ... */ messageHTML = `<div class="message-content">${content}</div><div class="message-avatar user-avatar">U</div>`; } else { /* ... same as before ... */ const botAvatar = `<div class="message-avatar bot-avatar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.75L13.8341 10.1659L21.25 12L13.8341 13.8341L12 21.25L10.1659 13.8341L2.75 12L10.1659 10.1659L12 2.75Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></path></svg></div>`; if (content === 'loading') { messageHTML = `${botAvatar}<div class="message-content"><div class="spinner"><div class="bar1"></div><div class="bar2"></div><div class="bar3"></div></div></div>`; } else { messageHTML = `${botAvatar}<div class="message-content">${content}</div>`; } }
+            messageWrapper.innerHTML = messageHTML;
+            chatHistory.appendChild(messageWrapper);
+            scrollToBottom();
+            return messageWrapper;
+        }
+        function updateBotMessage(messageElement, newContent) { const contentDiv = messageElement.querySelector('.message-content'); contentDiv.innerHTML = newContent; scrollToBottom(); }
+        function scrollToBottom() { chatHistory.scrollTop = chatHistory.scrollHeight; }
+
+
+        // --- NEW Logic for the Contact Modal ---
+        const contactBtn = document.getElementById('contact-us-btn');
+        const modal = document.getElementById('contact-modal');
+        const modalCloseBtn = document.querySelector('.modal-close');
+        const contactForm = document.getElementById('contact-form');
+        const modalFormView = document.getElementById('modal-form-view');
+        const modalSuccessView = document.getElementById('modal-success-view');
+
+        // Show the modal when the "Contact us" button is clicked
+        contactBtn.addEventListener('click', () => {
+            modal.style.display = 'block';
+            // Reset to form view in case it was left on success view
+            modalFormView.style.display = 'block';
+            modalSuccessView.style.display = 'none';
+        });
+
+        // Hide the modal when the 'x' is clicked
+        modalCloseBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        // Hide the modal if user clicks outside the modal content
+        window.addEventListener('click', (event) => {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // Handle the contact form submission
+        contactForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const formData = new FormData(contactForm);
+            const data = Object.fromEntries(formData.entries());
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            try {
+                const response = await fetch('/contact-support', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.status === 'success') {
+                    // Show success message
+                    modalFormView.style.display = 'none';
+                    modalSuccessView.style.display = 'block';
+                } else {
+                    alert(result.message || 'An error occurred.');
+                }
+            } catch (error) {
+                console.error('Contact form submission error:', error);
+                alert('Could not submit form. Please check your connection.');
+            } finally {
+                // Reset button
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit';
+                contactForm.reset();
+            }
+        });
+
+    </script>
+</body>
+</html>
