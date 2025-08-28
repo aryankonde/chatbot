@@ -23,7 +23,7 @@ model = SentenceTransformer(MODEL_NAME)
 print("[DEBUG] Embedding model loaded.")
 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
-GEMINI_API_KEY = "AIzaSyDhmzjmnP_1yC-EvF8Z2E5QUDBqLbMs8WA" 
+GEMINI_API_KEY = "api_key" 
 
 def get_gemini_answer(context, question):
     headers = {"Content-Type": "application/json"}
