@@ -2,10 +2,6 @@
 
 A sophisticated, document-aware chatbot that provides accurate answers using a Retrieval-Augmented Generation (RAG) pipeline. This project features a dynamic web interface and a seamless escalation path for users to contact human support, with all requests automatically logged into a Google Sheet.
 
-\<br\>
-
-*(Recommendation: Record a short GIF of your application and replace the link above to showcase its functionality.)*
-
 ## Features
 
   * **Accurate, Context-Aware AI:** Utilizes a **RAG pipeline** to ground responses in your own documents, preventing the AI from hallucinating or providing irrelevant information.
