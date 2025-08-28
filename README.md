@@ -151,6 +151,6 @@ python app.py
 
 The application will be running on port 5001 by default. Open your web browser and navigate to:
 
-**[http://127.0.0.1:5001](https://www.google.com/search?q=http://127.0.0.1:5001)**
+**[http://127.0.0.1:5000](https://www.google.com/search?q=http://127.0.0.1:5000)**
 
 You can now interact with your chatbot\!
