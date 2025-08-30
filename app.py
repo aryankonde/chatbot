@@ -1,6 +1,9 @@
 import pickle
 import numpy as np
 import faiss
+import os
+import base64
+import json
 from flask import Flask, request, render_template, jsonify
 from sentence_transformers import SentenceTransformer
 import requests
@@ -8,7 +11,6 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials 
 from datetime import datetime 
 
-# --- (Constants and model loading remain the same) ---
 FAISS_PATH = 'faiss_index.bin'
 META_PATH = 'faiss_meta.pkl'
 MODEL_NAME = 'all-MiniLM-L6-v2'
@@ -23,7 +25,8 @@ model = SentenceTransformer(MODEL_NAME)
 print("[DEBUG] Embedding model loaded.")
 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
-GEMINI_API_KEY = "api_key" 
+#GEMINI_API_KEY = "" 
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 def get_gemini_answer(context, question):
     headers = {"Content-Type": "application/json"}
@@ -107,7 +110,10 @@ def api_ask():
 
 @app.route('/contact-support', methods=['POST'])
 def contact_support():
-    
+    """
+    Receives contact details and logs them to a Google Sheet
+    by reading credentials from an environment variable.
+    """
     data = request.json
     name = data.get('name')
     email = data.get('email')
@@ -117,20 +123,36 @@ def contact_support():
         return jsonify({'status': 'error', 'message': 'All fields are required.'}), 400
 
     try:
-        creds = ServiceAccountCredentials.from_json_keyfile_name(GSPREAD_CREDENTIALS, GSPREAD_SCOPE)
+        # 1. Get the base64 encoded credentials from the environment variable
+        creds_b64 = os.environ.get('GSPREAD_CREDENTIALS_B64')
+        if not creds_b64:
+            print("[ERROR] GSPREAD_CREDENTIALS_B64 environment variable not set.")
+            # Return a generic error to the user for security
+            return jsonify({'status': 'error', 'message': 'Server configuration error.'}), 500
+
+        # 2. Decode the base64 string back into a JSON string
+        creds_json_str = base64.b64decode(creds_b64).decode('utf-8')
+        
+        # 3. Load the JSON string into a Python dictionary
+        creds_json = json.loads(creds_json_str)
+        
+        # 4. Authenticate with Google Sheets using the dictionary (not a file)
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, GSPREAD_SCOPE)
         client = gspread.authorize(creds)
+        
+        # 5. Open the sheet and append the new row
         sheet = client.open(GOOGLE_SHEET_NAME).sheet1
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         row = [name, email, question, timestamp]
         sheet.append_row(row)
+        
         return jsonify({'status': 'success', 'message': 'Your request has been submitted successfully.'})
     
-    except FileNotFoundError:
-        print("[ERROR] credentials.json not found.")
-        return jsonify({'status': 'error', 'message': 'Server configuration error: credentials file not found.'}), 500
     except Exception as e:
-        print(f"[ERROR] An error occurred with Google Sheets: {e}")
+        # This will catch any errors during the process (e.g., invalid credentials, sheet not found)
+        print(f"[ERROR] An error occurred with Google Sheets integration: {e}")
         return jsonify({'status': 'error', 'message': 'Could not submit your request due to a server error.'}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
