@@ -1,0 +1,19 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+python-docx = "==0.8.11"
+sentence-transformers = "==2.2.2"
+transformers = "==4.30.2"
+torch = ">=1.6.0"
+faiss-cpu = "==1.7.4"
+numpy = "==1.23.5"
+gspread = "*"
+oauth2client = "*"
+gunicorn = "*"
+waitress = "*"
+
+[requires]
+python_version = "3.9"
